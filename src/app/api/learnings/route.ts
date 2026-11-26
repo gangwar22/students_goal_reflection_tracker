@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search"); // tag or text filter
     const studentId = searchParams.get("studentId");
 
-    const targetUserId = (user.role === "admin" && studentId) ? studentId : user.id;
+    const targetUserId = ((user.role === "admin" || user.role === "mentor") && studentId) ? studentId : user.id;
 
     const where: any = { userId: targetUserId };
     if (level && ["daily", "weekly", "monthly"].includes(level)) {

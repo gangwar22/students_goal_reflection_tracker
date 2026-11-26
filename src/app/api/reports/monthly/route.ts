@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const studentId = searchParams.get("studentId");
-    const targetUserId = (user.role === "admin" && studentId) ? studentId : user.id;
+    const targetUserId = ((user.role === "admin" || user.role === "mentor") && studentId) ? studentId : user.id;
 
     // Target month YYYY-MM
     let month = searchParams.get("month");

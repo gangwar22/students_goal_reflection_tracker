@@ -31,8 +31,8 @@ export async function POST(
       return NextResponse.json({ error: "Week not found" }, { status: 404 });
     }
 
-    // Role check: Only the student themselves or an admin can trigger analysis
-    if (week.userId !== user.id && user.role !== "admin") {
+    // Role check: Only the student themselves, admin, or mentor can trigger analysis
+    if (week.userId !== user.id && user.role !== "admin" && user.role !== "mentor") {
       return NextResponse.json({ error: "Forbidden: Cannot analyze another student's week" }, { status: 403 });
     }
 

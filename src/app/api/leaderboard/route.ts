@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
     const settings = await db.systemSetting.findFirst();
     // Check if leaderboard is enabled by admin
-    if (settings && !settings.leaderboardEnabled && user.role !== "admin") {
+    if (settings && !settings.leaderboardEnabled && user.role !== "admin" && user.role !== "mentor") {
       return NextResponse.json({
         enabled: false,
         message: "Cohort leaderboard is currently hidden by administration.",
