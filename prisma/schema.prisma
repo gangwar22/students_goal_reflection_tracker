@@ -1,0 +1,241 @@
+// Prisma schema for AI Weekly Goal Tracker & Reflection Platform
+// MongoDB Provider
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("student") // "student", "admin", "mentor"
+  batchId       String?   @db.ObjectId
+  batch         Batch?    @relation(fields: [batchId], references: [id])
+  timezone      String    @default("Asia/Kolkata")
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  weeks         Week[]
+  weeklyGoals   WeeklyGoal[]
+  dailyGoals    DailyGoal[]
+  weeklyReports WeeklyReport[]
+  monthlyReports MonthlyReport[]
+  learnings     Learning[]
+  disputes      Dispute[]
+  notifications Notification[]
+
+  @@index([batchId])
+}
+
+model Batch {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  users     User[]
+  createdAt DateTime @default(now())
+}
+
+model Week {
+  id          String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String        @db.ObjectId
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart   String        // Format: YYYY-MM-DD (Monday)
+  weekEnd     String        // Format: YYYY-MM-DD (Sunday)
+  lockedAt    DateTime?
+  status      String        @default("open") // "open", "locked", "analysed"
+  createdAt   DateTime      @default(now())
+
+  goals       WeeklyGoal[]
+  reports     WeeklyReport[]
+
+  @@unique([userId, weekStart])
+}
+
+model WeeklyGoal {
+  id               String      @id @default(auto()) @map("_id") @db.ObjectId
+  weekId           String      @db.ObjectId
+  week             Week        @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  userId           String      @db.ObjectId
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  category         String      @default("Technical") // "Technical", "Academic", "Career", "Personal", "Health"
+  weight           Int         @default(1) // 1 to 3
+  isCarriedForward Boolean     @default(false)
+  editedAfterLock  Boolean     @default(false)
+  editReason       String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  dailyGoals       DailyGoal[]
+
+  @@index([weekId])
+  @@index([userId])
+}
+
+model DailyGoal {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String      @db.ObjectId
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weeklyGoalId String?     @db.ObjectId
+  weeklyGoal   WeeklyGoal? @relation(fields: [weeklyGoalId], references: [id], onDelete: SetNull)
+  goalDate     String      // Format: YYYY-MM-DD
+  title        String
+  isExtra      Boolean     @default(false)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  reflection   Reflection?
+  goalScores   GoalScore[]
+
+  @@index([userId, goalDate])
+  @@index([weeklyGoalId])
+}
+
+model Reflection {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  dailyGoalId String    @unique @db.ObjectId
+  dailyGoal   DailyGoal @relation(fields: [dailyGoalId], references: [id], onDelete: Cascade)
+  didText     String
+  blockedText String
+  learnedText String
+  selfRating  Int?      // 1 to 5
+  submittedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model GoalScore {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  dailyGoalId String       @db.ObjectId
+  dailyGoal   DailyGoal    @relation(fields: [dailyGoalId], references: [id], onDelete: Cascade)
+  reportId    String       @db.ObjectId
+  report      WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  score       Int          // 0 to 100
+  status      String       // "achieved", "partial", "missed", "no_evidence"
+  reason      String
+  confidence  String       @default("high") // "high", "low"
+  createdAt   DateTime     @default(now())
+
+  disputes    Dispute[]
+
+  @@index([dailyGoalId])
+  @@index([reportId])
+}
+
+model WeeklyReport {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String      @db.ObjectId
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekId         String      @db.ObjectId
+  week           Week        @relation(fields: [weekId], references: [id], onDelete: Cascade)
+  overallPercent Float
+  reportJson     String      // Full JSON contract
+  model          String      @default("claude-3-5-sonnet")
+  promptVersion  String      @default("v1.2")
+  inputHash      String
+  status         String      @default("done") // "pending", "done", "failed"
+  generatedAt    DateTime    @default(now())
+
+  goalScores     GoalScore[]
+
+  @@index([userId])
+  @@index([weekId])
+  @@index([status])
+}
+
+model MonthlyReport {
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId              String   @db.ObjectId
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month               String   // YYYY-MM
+  overallPercent      Float
+  weekPercentsJson    String   // Array of { weekId, weekStart, percent, goalCount }
+  learningSummaryJson String   // Clustered themes and recurring skills
+  missesJson          String   // Repeated misses list
+  generatedAt         DateTime @default(now())
+
+  @@unique([userId, month])
+}
+
+model Learning {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source    String   // "daily", "weekly", "monthly"
+  sourceId  String?
+  theme     String?
+  text      String
+  tags      String   // Comma-separated or JSON
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([userId, source])
+}
+
+model Dispute {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  goalScoreId String    @db.ObjectId
+  goalScore   GoalScore @relation(fields: [goalScoreId], references: [id], onDelete: Cascade)
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment     String
+  status      String    @default("pending") // "pending", "resolved", "rejected"
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  adminNotes  String?
+  overrideScore Int?
+  createdAt   DateTime  @default(now())
+
+  @@index([goalScoreId])
+  @@index([userId])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  actorId   String
+  action    String
+  entity    String
+  entityId  String
+  metaJson  String?
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entity, entityId])
+}
+
+model Notification {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "reminder", "report_ready", "dispute_resolved", "alert"
+  sentAt    DateTime @default(now())
+  channel   String   @default("in-app") // "in-app", "email"
+  content   String
+  isRead    Boolean  @default(false)
+
+  @@index([userId])
+}
+
+model SystemSetting {
+  id                     String  @id @default(auto()) @map("_id") @db.ObjectId
+  minWeeklyGoals         Int     @default(3)
+  maxWeeklyGoals         Int     @default(10)
+  lockTime               String  @default("Monday 23:59")
+  reminderTime           String  @default("20:00")
+  scoreThresholdAchieved Int     @default(80)
+  scoreThresholdPartial  Int     @default(40)
+  promptVersion          String  @default("v1.2")
+  aiProvider             String  @default("auto") // "auto", "mock", "claude", "gemini"
+  leaderboardEnabled     Boolean @default(true)
+}
