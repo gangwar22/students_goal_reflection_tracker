@@ -31,24 +31,33 @@ export default function AdminLayout({
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    fetch("/api/auth/me", {
+      headers: authHeaders,
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
       })
       .then((data) => {
         if (data.user?.role !== "admin" && data.user?.role !== "mentor") {
-          router.push("/app");
+          window.location.href = "/app";
         } else {
           setUser(data.user);
         }
       })
-      .catch(() => router.push("/login"));
-  }, [router]);
+      .catch(() => {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      });
+  }, []);
 
   const handleLogout = async () => {
+    localStorage.removeItem("token");
     await fetch("/api/auth/me", { method: "POST" });
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const isMentor = user?.role === "mentor";

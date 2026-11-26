@@ -9,7 +9,9 @@ export default function ProfilePage() {
   const [savedMsg, setSavedMsg] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch("/api/auth/me", { headers: authHeaders })
       .then((res) => res.json())
       .then((data) => setUser(data.user));
   }, []);

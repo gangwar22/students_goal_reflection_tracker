@@ -46,8 +46,13 @@ export default function StudentLayout({
   } | null>(null);
 
   useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
     // Fetch auth user
-    fetch("/api/auth/me")
+    fetch("/api/auth/me", {
+      headers: authHeaders,
+    })
       .then((res) => {
         if (!res.ok) throw new Error();
         return res.json();
@@ -55,18 +60,24 @@ export default function StudentLayout({
       .then((data) => {
         if (data.user) {
           if (data.user.role === "admin" || data.user.role === "mentor") {
-            router.push("/admin");
+            window.location.href = "/admin";
           } else {
             setUser(data.user);
           }
         } else {
-          router.push("/login");
+          localStorage.removeItem("token");
+          window.location.href = "/login";
         }
       })
-      .catch(() => router.push("/login"));
+      .catch(() => {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      });
 
     // Fetch current week info
-    fetch("/api/weeks/current")
+    fetch("/api/weeks/current", {
+      headers: authHeaders,
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.week) {
@@ -79,11 +90,12 @@ export default function StudentLayout({
         }
       })
       .catch(() => {});
-  }, [router]);
+  }, []);
 
   const handleLogout = async () => {
+    localStorage.removeItem("token");
     await fetch("/api/auth/me", { method: "POST" });
-    router.push("/login");
+    window.location.href = "/login";
   };
 
   const navItems = [

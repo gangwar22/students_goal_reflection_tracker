@@ -29,10 +29,14 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
-      if (data.user.role === "admin" || data.user.role === "mentor") {
-        router.push("/admin");
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      if (data.user?.role === "admin" || data.user?.role === "mentor") {
+        window.location.href = "/admin";
       } else {
-        router.push("/app");
+        window.location.href = "/app";
       }
     } catch (err: any) {
       setError(err.message);

@@ -30,7 +30,11 @@ export default function RegisterPage() {
         throw new Error(data.error || "Registration failed");
       }
 
-      router.push("/app");
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+      }
+
+      window.location.href = "/app";
     } catch (err: any) {
       setError(err.message);
     } finally {

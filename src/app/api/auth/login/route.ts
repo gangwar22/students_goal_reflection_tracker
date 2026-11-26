@@ -44,12 +44,15 @@ export async function POST(req: NextRequest) {
       token,
     });
 
-    // Set HTTP-only cookie
+    // Set HTTP-only cookie with proper secure flag handling
+    const proto = req.headers.get("x-forwarded-proto");
+    const isHttps = proto === "https" || req.url.startsWith("https://");
+
     response.cookies.set({
       name: "token",
       value: token,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days

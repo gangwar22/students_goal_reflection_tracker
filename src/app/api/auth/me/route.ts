@@ -18,7 +18,13 @@ export async function GET(req: NextRequest) {
 export async function POST() {
   // Logout endpoint
   const response = NextResponse.json({ success: true, message: "Logged out" });
-  response.cookies.delete("token");
+  response.cookies.set({
+    name: "token",
+    value: "",
+    httpOnly: true,
+    maxAge: 0,
+    path: "/",
+  });
   return response;
 }
 

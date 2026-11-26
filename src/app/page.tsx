@@ -29,14 +29,18 @@ export default function LandingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password: pass }),
       });
+      const data = await res.json();
       if (res.ok) {
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+        }
         if (role === "admin" || role === "mentor") {
-          router.push("/admin");
+          window.location.href = "/admin";
         } else {
-          router.push("/app");
+          window.location.href = "/app";
         }
       } else {
-        alert("Demo login failed, please try logging in manually.");
+        alert(data.error || "Demo login failed, please try logging in manually.");
       }
     } catch {
       alert("Network error");
