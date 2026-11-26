@@ -1,8 +1,8 @@
 // Prisma schema for AI Weekly Goal Tracker & Reflection Platform
-// MongoDB Provider
+// PostgreSQL Provider (Prisma Postgres / Supabase / Neon / AWS RDS)
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -12,12 +12,12 @@ generator client {
 }
 
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  id            String    @id @default(cuid())
   name          String
   email         String    @unique
   passwordHash  String
   role          String    @default("student") // "student", "admin", "mentor"
-  batchId       String?   @db.ObjectId
+  batchId       String?
   batch         Batch?    @relation(fields: [batchId], references: [id])
   timezone      String    @default("Asia/Kolkata")
   isActive      Boolean   @default(true)
@@ -37,7 +37,7 @@ model User {
 }
 
 model Batch {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(cuid())
   name      String
   startDate DateTime
   endDate   DateTime
@@ -46,8 +46,8 @@ model Batch {
 }
 
 model Week {
-  id          String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String        @db.ObjectId
+  id          String        @id @default(cuid())
+  userId      String
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   weekStart   String        // Format: YYYY-MM-DD (Monday)
   weekEnd     String        // Format: YYYY-MM-DD (Sunday)
@@ -62,10 +62,10 @@ model Week {
 }
 
 model WeeklyGoal {
-  id               String      @id @default(auto()) @map("_id") @db.ObjectId
-  weekId           String      @db.ObjectId
+  id               String      @id @default(cuid())
+  weekId           String
   week             Week        @relation(fields: [weekId], references: [id], onDelete: Cascade)
-  userId           String      @db.ObjectId
+  userId           String
   user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   title            String
   description      String?
@@ -84,10 +84,10 @@ model WeeklyGoal {
 }
 
 model DailyGoal {
-  id           String      @id @default(auto()) @map("_id") @db.ObjectId
-  userId       String      @db.ObjectId
+  id           String      @id @default(cuid())
+  userId       String
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weeklyGoalId String?     @db.ObjectId
+  weeklyGoalId String?
   weeklyGoal   WeeklyGoal? @relation(fields: [weeklyGoalId], references: [id], onDelete: SetNull)
   goalDate     String      // Format: YYYY-MM-DD
   title        String
@@ -103,26 +103,26 @@ model DailyGoal {
 }
 
 model Reflection {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  dailyGoalId String    @unique @db.ObjectId
+  id          String    @id @default(cuid())
+  dailyGoalId String    @unique
   dailyGoal   DailyGoal @relation(fields: [dailyGoalId], references: [id], onDelete: Cascade)
-  didText     String
-  blockedText String
-  learnedText String
+  didText     String    @db.Text
+  blockedText String    @db.Text
+  learnedText String    @db.Text
   selfRating  Int?      // 1 to 5
   submittedAt DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
 
 model GoalScore {
-  id          String       @id @default(auto()) @map("_id") @db.ObjectId
-  dailyGoalId String       @db.ObjectId
+  id          String       @id @default(cuid())
+  dailyGoalId String
   dailyGoal   DailyGoal    @relation(fields: [dailyGoalId], references: [id], onDelete: Cascade)
-  reportId    String       @db.ObjectId
+  reportId    String
   report      WeeklyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
   score       Int          // 0 to 100
   status      String       // "achieved", "partial", "missed", "no_evidence"
-  reason      String
+  reason      String       @db.Text
   confidence  String       @default("high") // "high", "low"
   createdAt   DateTime     @default(now())
 
@@ -133,13 +133,13 @@ model GoalScore {
 }
 
 model WeeklyReport {
-  id             String      @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String      @db.ObjectId
+  id             String      @id @default(cuid())
+  userId         String
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  weekId         String      @db.ObjectId
+  weekId         String
   week           Week        @relation(fields: [weekId], references: [id], onDelete: Cascade)
   overallPercent Float
-  reportJson     String      // Full JSON contract
+  reportJson     String      @db.Text // Full JSON contract
   model          String      @default("claude-3-5-sonnet")
   promptVersion  String      @default("v1.2")
   inputHash      String
@@ -154,27 +154,27 @@ model WeeklyReport {
 }
 
 model MonthlyReport {
-  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId              String   @db.ObjectId
+  id                  String   @id @default(cuid())
+  userId              String
   user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   month               String   // YYYY-MM
   overallPercent      Float
-  weekPercentsJson    String   // Array of { weekId, weekStart, percent, goalCount }
-  learningSummaryJson String   // Clustered themes and recurring skills
-  missesJson          String   // Repeated misses list
+  weekPercentsJson    String   @db.Text // Array of { weekId, weekStart, percent, goalCount }
+  learningSummaryJson String   @db.Text // Clustered themes and recurring skills
+  missesJson          String   @db.Text // Repeated misses list
   generatedAt         DateTime @default(now())
 
   @@unique([userId, month])
 }
 
 model Learning {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String   @id @default(cuid())
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   source    String   // "daily", "weekly", "monthly"
   sourceId  String?
   theme     String?
-  text      String
+  text      String   @db.Text
   tags      String   // Comma-separated or JSON
   date      String   // YYYY-MM-DD
   createdAt DateTime @default(now())
@@ -184,16 +184,16 @@ model Learning {
 }
 
 model Dispute {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  goalScoreId String    @db.ObjectId
+  id          String    @id @default(cuid())
+  goalScoreId String
   goalScore   GoalScore @relation(fields: [goalScoreId], references: [id], onDelete: Cascade)
-  userId      String    @db.ObjectId
+  userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comment     String
+  comment     String    @db.Text
   status      String    @default("pending") // "pending", "resolved", "rejected"
   resolvedBy  String?
   resolvedAt  DateTime?
-  adminNotes  String?
+  adminNotes  String?   @db.Text
   overrideScore Int?
   createdAt   DateTime  @default(now())
 
@@ -203,12 +203,12 @@ model Dispute {
 }
 
 model AuditLog {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(cuid())
   actorId   String
   action    String
   entity    String
   entityId  String
-  metaJson  String?
+  metaJson  String?  @db.Text
   createdAt DateTime @default(now())
 
   @@index([actorId])
@@ -216,20 +216,20 @@ model AuditLog {
 }
 
 model Notification {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String   @id @default(cuid())
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String   // "reminder", "report_ready", "dispute_resolved", "alert"
   sentAt    DateTime @default(now())
   channel   String   @default("in-app") // "in-app", "email"
-  content   String
+  content   String   @db.Text
   isRead    Boolean  @default(false)
 
   @@index([userId])
 }
 
 model SystemSetting {
-  id                     String  @id @default(auto()) @map("_id") @db.ObjectId
+  id                     String  @id @default(cuid())
   minWeeklyGoals         Int     @default(3)
   maxWeeklyGoals         Int     @default(10)
   lockTime               String  @default("Monday 23:59")
